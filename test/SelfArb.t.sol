@@ -16,14 +16,14 @@ import {PoolSwapTest} from "@uniswap/v4-core/contracts/test/PoolSwapTest.sol";
 import {PoolDonateTest} from "@uniswap/v4-core/contracts/test/PoolDonateTest.sol";
 import {Deployers} from "@uniswap/v4-core/test/foundry-tests/utils/Deployers.sol";
 import {CurrencyLibrary, Currency} from "@uniswap/v4-core/contracts/libraries/CurrencyLibrary.sol";
-import {Counter} from "../src/Counter.sol";
-import {CounterImplementation} from "../src/implementation/CounterImplementation.sol";
+import {SelfArb} from "../src/SelfArb.sol";
+import {SelfArbImplementation} from "../src/implementation/SelfArbImplementation.sol";
 
-contract CounterTest is Test, Deployers, GasSnapshot {
+contract SelfArbTest is Test, Deployers, GasSnapshot {
     using PoolId for IPoolManager.PoolKey;
     using CurrencyLibrary for Currency;
 
-    Counter counter = Counter(
+    SelfArb selfarb = SelfArb(
         address(uint160(Hooks.BEFORE_SWAP_FLAG | Hooks.AFTER_SWAP_FLAG))
     );
     PoolManager manager;
@@ -41,19 +41,19 @@ contract CounterTest is Test, Deployers, GasSnapshot {
 
         // testing environment requires our contract to override `validateHookAddress`
         // well do that via the Implementation contract to avoid deploying the override with the production contract
-        CounterImplementation impl = new CounterImplementation(manager, counter);
+        SelfArbImplementation impl = new SelfArbImplementation(manager, selfarb);
         (, bytes32[] memory writes) = vm.accesses(address(impl));
-        vm.etch(address(counter), address(impl).code);
+        vm.etch(address(selfarb), address(impl).code);
         // for each storage key that was written during the hook implementation, copy the value over
         unchecked {
             for (uint256 i = 0; i < writes.length; i++) {
                 bytes32 slot = writes[i];
-                vm.store(address(counter), slot, vm.load(address(impl), slot));
+                vm.store(address(selfarb), slot, vm.load(address(impl), slot));
             }
         }
 
         // Create the pool
-        poolKey = IPoolManager.PoolKey(Currency.wrap(address(token0)), Currency.wrap(address(token1)), 3000, 60, IHooks(counter));
+        poolKey = IPoolManager.PoolKey(Currency.wrap(address(token0)), Currency.wrap(address(token1)), 3000, 60, IHooks(selfarb));
         poolId = PoolId.toId(poolKey);
         manager.initialize(poolKey, SQRT_RATIO_1_1);
 
@@ -77,10 +77,7 @@ contract CounterTest is Test, Deployers, GasSnapshot {
         token1.approve(address(swapRouter), 100 ether);
     }
 
-    function testCounterHooks() public {
-        assertEq(counter.beforeSwapCount(), 0);
-        assertEq(counter.afterSwapCount(), 0);
-        
+    function testSelfArbHooks() public {
         // Perform a test swap //
         IPoolManager.SwapParams memory params =
             IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 100, sqrtPriceLimitX96: SQRT_RATIO_1_2});
@@ -94,8 +91,5 @@ contract CounterTest is Test, Deployers, GasSnapshot {
             testSettings
         );
         // ------------------- //
-        
-        assertEq(counter.beforeSwapCount(), 1);
-        assertEq(counter.afterSwapCount(), 1);
     }
 }
