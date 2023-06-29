@@ -22,6 +22,7 @@ contract SelfArb is BaseHook {
     address public immutable token1;
     address public immutable token2;
 
+    uint160 constant SQRT_RATIO_1_4 = 39614081257132168796771975168;
     uint160 constant SQRT_RATIO_4_1 = 158456325028528675187087900672;
 
     constructor(IPoolManager _poolManager, address _token0, address _token1, address _token2) BaseHook(_poolManager) {
@@ -113,22 +114,22 @@ contract SelfArb is BaseHook {
             //Flash swap token0 for token1 (pool0Id)
             IPoolManager.SwapParams memory token0to1 = IPoolManager.SwapParams({
                 zeroForOne: true, 
-                amountSpecified: 5,
-                sqrtPriceLimitX96: SQRT_RATIO_4_1
+                amountSpecified: 1 ether,
+                sqrtPriceLimitX96: SQRT_RATIO_1_4
             });
             BalanceDelta delta0 = poolManager.swap(pool0Key, token0to1);
             //Swap token1 for token2 (pool1Id)
             IPoolManager.SwapParams memory token1to2 = IPoolManager.SwapParams({
                 zeroForOne: true, 
                 amountSpecified: -delta0.amount1(),
-                sqrtPriceLimitX96: SQRT_RATIO_4_1
+                sqrtPriceLimitX96: SQRT_RATIO_1_4
             });
             BalanceDelta delta1 = poolManager.swap(pool1Key, token1to2);
             //Swap token2 for token0 (pool2Id)
             IPoolManager.SwapParams memory token2to0 = IPoolManager.SwapParams({
                 zeroForOne: true, 
                 amountSpecified: -delta1.amount1(),
-                sqrtPriceLimitX96: SQRT_RATIO_4_1
+                sqrtPriceLimitX96: SQRT_RATIO_1_4
             });
             BalanceDelta delta2 = poolManager.swap(pool2Key, token2to0);
 

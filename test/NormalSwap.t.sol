@@ -22,7 +22,7 @@ import {BalanceDelta} from "@uniswap/v4-core/contracts/types/BalanceDelta.sol";
 
 import "forge-std/console.sol";
 
-contract SelfArbTest is Test, Deployers, GasSnapshot {
+contract NormalSwapTest is Test, Deployers, GasSnapshot {
     struct Slot0 {
         // the current price
         uint160 sqrtPriceX96;
@@ -51,7 +51,7 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
     IPoolManager.PoolKey poolKey2;
     PoolId poolId2;
 
-    function setUpNormalPools() public {
+    function setUp() public {
         token0 = new TestERC20(2**128);
         token1 = new TestERC20(2**128);
         token2 = new TestERC20(2**128);
@@ -132,13 +132,25 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
         //Add prints for price
     }
 
-    function testNormalSwap() public {
+    function testNormalSwap1() public {
         // Perform a test swap //
         IPoolManager.SwapParams memory params =
             IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 9 ether, sqrtPriceLimitX96: SQRT_RATIO_1_2});
 
         PoolSwapTest.TestSettings memory testSettings =
             PoolSwapTest.TestSettings({withdrawTokens: true, settleUsingTransfer: true});
+
+        (uint160 sqrtPriceX96, , , , ,) = manager.getSlot0(poolId0);
+        console.log("POOL 0 PRICE BEFORE:");
+        console.logUint(sqrtPriceX96);
+
+        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId1);
+        console.log("POOL 1 PRICE BEFORE:");
+        console.logUint(sqrtPriceX96);
+
+        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
+        console.log("POOL 2 PRICE BEFORE:");
+        console.logUint(sqrtPriceX96);
         
         BalanceDelta delta = swapRouter.swap(
             poolKey0,
@@ -151,17 +163,62 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
         console.log("TOKEN 1 OUT:");
         console.logInt(-delta.amount1());
 
-        (uint160 sqrtPriceX96, , , , ,) = manager.getSlot0(poolId0);
-        console.log("SQRT PRICE X96:");
+        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId0);
+        console.log("POOL 1 PRICE BEFORE:");
         console.logUint(sqrtPriceX96);
 
-        // (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId1);
-        // console.log("SQRT PRICE X96:");
-        // console.logUint(sqrtPriceX96);
+        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId1);
+        console.log("POOL 2 PRICE BEFORE:");
+        console.logUint(sqrtPriceX96);
 
-        // (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
-        // console.log("SQRT PRICE X96:");
-        // console.logUint(sqrtPriceX96);
+        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
+        console.log("POOL 3 PRICE BEFORE:");
+        console.logUint(sqrtPriceX96);
+        // ------------------- //
+    }
+
+    function testNormalSwap2() public {
+        // Perform a test swap //
+        IPoolManager.SwapParams memory params =
+            IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 5 ether, sqrtPriceLimitX96: SQRT_RATIO_4_1});
+
+        PoolSwapTest.TestSettings memory testSettings =
+            PoolSwapTest.TestSettings({withdrawTokens: true, settleUsingTransfer: true});
+
+        (uint160 sqrtPriceX96, , , , ,) = manager.getSlot0(poolId0);
+        console.log("POOL 0 PRICE BEFORE:");
+        console.logUint(sqrtPriceX96);
+
+        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId1);
+        console.log("POOL 1 PRICE BEFORE:");
+        console.logUint(sqrtPriceX96);
+
+        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
+        console.log("POOL 2 PRICE BEFORE:");
+        console.logUint(sqrtPriceX96);
+        
+        BalanceDelta delta = swapRouter.swap(
+            poolKey0,
+            params,
+            testSettings
+        );
+
+        console.log("TOKEN 1 IN:");
+        console.logInt(delta.amount1());
+        console.log("TOKEN 0 OUT:");
+        console.logInt(-delta.amount0());
+
+        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId0);
+        console.log("POOL 0 PRICE AFTER:");
+        console.logUint(sqrtPriceX96);
+
+        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId1);
+        console.log("POOL 1 PRICE AFTER:");
+        console.logUint(sqrtPriceX96);
+
+        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
+        console.log("POOL 2 PRICE AFTER:");
+        console.logUint(sqrtPriceX96);
         // ------------------- //
     }
 }
