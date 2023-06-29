@@ -27,6 +27,7 @@ contract SelfArb is BaseHook {
     uint160 constant SQRT_RATIO_1_4 = 39614081257132168796771975168;
     uint160 constant SQRT_RATIO_4_1 = 158456325028528675187087900672;
     uint160 constant SQRT_RATIO_1_1 = 79228162514264337593543950336;
+    uint160 constant SQRT_RATIO_1_2 = 56022770974786139918731938227;
     uint160 constant SQRT_RATIO_2_3 = SQRT_RATIO_1_1 * 4 / 5;
     uint160 constant SQRT_RATIO_2_1 = SQRT_RATIO_1_1 * 7 / 5;
 
@@ -80,8 +81,6 @@ contract SelfArb is BaseHook {
             });
             BalanceDelta delta0 = poolManager.swap(pool0Key, token1to0);
 
-            console.logInt(-delta0.amount0());
-
             //Swap token0 for token2 (pool2Id)
             IPoolManager.SwapParams memory token0to2 = IPoolManager.SwapParams({
                 zeroForOne: false,
@@ -89,7 +88,6 @@ contract SelfArb is BaseHook {
                 sqrtPriceLimitX96: SQRT_RATIO_4_1
             });
             BalanceDelta delta2 = poolManager.swap(pool2Key, token0to2);
-            console.logInt(-delta2.amount0());
 
             //Swap token2 for token1 (pool1Id)
             IPoolManager.SwapParams memory token2to1 = IPoolManager.SwapParams({
@@ -98,7 +96,6 @@ contract SelfArb is BaseHook {
                 sqrtPriceLimitX96: SQRT_RATIO_4_1
             });
             BalanceDelta delta1 = poolManager.swap(pool1Key, token2to1);
-            console.logInt(-delta1.amount0());
 
             //Repay loan on token 1
 
@@ -125,7 +122,7 @@ contract SelfArb is BaseHook {
             IPoolManager.SwapParams memory token0to1 = IPoolManager.SwapParams({
                 zeroForOne: true,
                 amountSpecified: data.params.amountSpecified / 2,
-                sqrtPriceLimitX96: SQRT_RATIO_1_1
+                sqrtPriceLimitX96: SQRT_RATIO_1_2
             });
             BalanceDelta delta0 = poolManager.swap(pool0Key, token0to1);
             //Swap token1 for token2 (pool1Id)
@@ -151,7 +148,7 @@ contract SelfArb is BaseHook {
             //     poolManager.settle(pool2Key.currency0);
             // }
 
-            require(-delta2.amount1() >= delta0.amount0());
+            require(-delta2.amount1() >= delta0.amount0(), "Loan not repaid");
 
             console.log("PROFIT:");
             console.logInt(-delta2.amount1() - delta0.amount0());
@@ -203,10 +200,10 @@ contract SelfArb is BaseHook {
             require(token0Amount >= 0 && token1Amount >= 0);
 
             if (token0Amount > 0) {
-                IERC20Minimal(Currency.unwrap(key.currency0)).transferFrom(address(this), sender, uint128(token0));
+                IERC20Minimal(Currency.unwrap(key.currency0)).transferFrom(address(this), sender, uint128(token0Amount));
             }
             if (token1Amount > 0) {
-                IERC20Minimal(Currency.unwrap(key.currency1)).transferFrom(address(this), sender, uint128(token1));
+                IERC20Minimal(Currency.unwrap(key.currency1)).transferFrom(address(this), sender, uint128(token1Amount));
             }
         }
 
