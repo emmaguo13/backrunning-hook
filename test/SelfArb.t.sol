@@ -54,7 +54,7 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
     IPoolManager.PoolKey poolKey2;
     PoolId poolId2;
 
-    function setUpSelfArbPool() public {
+    function setUpSelfArbHook() public {
         token0 = new TestERC20(2**128);
         token1 = new TestERC20(2**128);
         token2 = new TestERC20(2**128);
@@ -174,13 +174,13 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
         console.log("SQRT PRICE X96:");
         console.logUint(sqrtPriceX96);
 
-        // (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId1);
-        // console.log("SQRT PRICE X96:");
-        // console.logUint(sqrtPriceX96);
+        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId1);
+        console.log("SQRT PRICE X96:");
+        console.logUint(sqrtPriceX96);
 
-        // (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
-        // console.log("SQRT PRICE X96:");
-        // console.logUint(sqrtPriceX96);
+        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
+        console.log("SQRT PRICE X96:");
+        console.logUint(sqrtPriceX96);
         // ------------------- //
     }
 }
