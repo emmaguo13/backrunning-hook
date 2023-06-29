@@ -24,6 +24,9 @@ contract SelfArb is BaseHook {
 
     uint160 constant SQRT_RATIO_1_4 = 39614081257132168796771975168;
     uint160 constant SQRT_RATIO_4_1 = 158456325028528675187087900672;
+    uint160 constant SQRT_RATIO_1_1 = 79228162514264337593543950336;
+    uint160 constant SQRT_RATIO_2_3 = SQRT_RATIO_1_1 * 4 / 5;
+    uint160 constant SQRT_RATIO_2_1 = SQRT_RATIO_1_1 * 7 / 5;
 
     constructor(IPoolManager _poolManager, address _token0, address _token1, address _token2) BaseHook(_poolManager) {
         token0 = _token0;
@@ -72,10 +75,12 @@ contract SelfArb is BaseHook {
             //Flash swap token1 for token0 (pool0Id)
             IPoolManager.SwapParams memory token1to0 = IPoolManager.SwapParams({
                 zeroForOne: false, 
-                amountSpecified: 0.5 ether,
-                sqrtPriceLimitX96: SQRT_RATIO_4_1
+                amountSpecified: data.params.amountSpecified / 2,
+                sqrtPriceLimitX96: SQRT_RATIO_1_1
             });
             BalanceDelta delta0 = poolManager.swap(pool0Key, token1to0);
+
+            console.logInt(-delta0.amount0());
 
             //Swap token0 for token2 (pool2Id)
             IPoolManager.SwapParams memory token0to2 = IPoolManager.SwapParams({
@@ -84,6 +89,7 @@ contract SelfArb is BaseHook {
                 sqrtPriceLimitX96: SQRT_RATIO_4_1
             });
             BalanceDelta delta2 = poolManager.swap(pool2Key, token0to2);
+            console.logInt(-delta2.amount0());
 
             //Swap token2 for token1 (pool1Id)
             IPoolManager.SwapParams memory token2to1 = IPoolManager.SwapParams({
@@ -92,6 +98,7 @@ contract SelfArb is BaseHook {
                 sqrtPriceLimitX96: SQRT_RATIO_4_1
             });
             BalanceDelta delta1 = poolManager.swap(pool1Key, token2to1);
+            console.logInt(-delta1.amount0());
 
             //Repay loan on token 1
 
@@ -103,7 +110,7 @@ contract SelfArb is BaseHook {
             // } 
             
             // TODO: figure out how to prevent reverts
-            require(-delta1.amount0() >= delta0.amount1());
+            require(-delta1.amount0() >= delta0.amount1(), "Loan not repaid");
 
             console.log("PROFIT:");
             console.logInt(-delta1.amount0() - delta0.amount1());
@@ -118,8 +125,8 @@ contract SelfArb is BaseHook {
             //Flash swap token0 for token1 (pool0Id)
             IPoolManager.SwapParams memory token0to1 = IPoolManager.SwapParams({
                 zeroForOne: true, 
-                amountSpecified: 1 ether,
-                sqrtPriceLimitX96: SQRT_RATIO_1_4
+                amountSpecified: data.params.amountSpecified / 2,
+                sqrtPriceLimitX96: SQRT_RATIO_1_1
             });
             BalanceDelta delta0 = poolManager.swap(pool0Key, token0to1);
             //Swap token1 for token2 (pool1Id)

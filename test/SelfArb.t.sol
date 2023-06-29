@@ -91,29 +91,29 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
         swapRouter = new PoolSwapTest(IPoolManager(address(manager)));
 
         // Provide liquidity to the pool
-        token0.approve(address(modifyPositionRouter), 10000 ether);
-        token1.approve(address(modifyPositionRouter), 10000 ether);
-        token2.approve(address (modifyPositionRouter), 10000 ether);
-        token0.mint(address(this), 10000 ether);
-        token1.mint(address(this), 10000 ether);
-        token2.mint(address(this), 10000 ether);
+        token0.approve(address(modifyPositionRouter), 100000 ether);
+        token1.approve(address(modifyPositionRouter), 100000 ether);
+        token2.approve(address (modifyPositionRouter), 100000 ether);
+        token0.mint(address(this), 100000 ether);
+        token1.mint(address(this), 100000 ether);
+        token2.mint(address(this), 100000 ether);
         
-        modifyPositionRouter.modifyPosition(poolKey0, IPoolManager.ModifyPositionParams(-60, 60, 100 ether));
-        modifyPositionRouter.modifyPosition(poolKey0, IPoolManager.ModifyPositionParams(-120, 120, 100 ether));
+        modifyPositionRouter.modifyPosition(poolKey0, IPoolManager.ModifyPositionParams(-60, 60, 1000 ether));
+        modifyPositionRouter.modifyPosition(poolKey0, IPoolManager.ModifyPositionParams(-120, 120, 1000 ether));
         modifyPositionRouter.modifyPosition(
-            poolKey0, IPoolManager.ModifyPositionParams(TickMath.minUsableTick(60), TickMath.maxUsableTick(60), 100 ether)
+            poolKey0, IPoolManager.ModifyPositionParams(TickMath.minUsableTick(60), TickMath.maxUsableTick(60), 1000 ether)
         );
 
-        modifyPositionRouter.modifyPosition(poolKey1, IPoolManager.ModifyPositionParams(-60, 60, 100 ether));
-        modifyPositionRouter.modifyPosition(poolKey1, IPoolManager.ModifyPositionParams(-120, 120, 100 ether));
+        modifyPositionRouter.modifyPosition(poolKey1, IPoolManager.ModifyPositionParams(-60, 60, 1000 ether));
+        modifyPositionRouter.modifyPosition(poolKey1, IPoolManager.ModifyPositionParams(-120, 120, 1000 ether));
         modifyPositionRouter.modifyPosition(
-            poolKey1, IPoolManager.ModifyPositionParams(TickMath.minUsableTick(60), TickMath.maxUsableTick(60), 100 ether)
+            poolKey1, IPoolManager.ModifyPositionParams(TickMath.minUsableTick(60), TickMath.maxUsableTick(60), 1000 ether)
         );
 
-        modifyPositionRouter.modifyPosition(poolKey2, IPoolManager.ModifyPositionParams(-60, 60, 100 ether));
-        modifyPositionRouter.modifyPosition(poolKey2, IPoolManager.ModifyPositionParams(-120, 120, 100 ether));
+        modifyPositionRouter.modifyPosition(poolKey2, IPoolManager.ModifyPositionParams(-60, 60, 1000 ether));
+        modifyPositionRouter.modifyPosition(poolKey2, IPoolManager.ModifyPositionParams(-120, 120, 1000 ether));
         modifyPositionRouter.modifyPosition(
-            poolKey2, IPoolManager.ModifyPositionParams(TickMath.minUsableTick(60), TickMath.maxUsableTick(60), 100 ether)
+            poolKey2, IPoolManager.ModifyPositionParams(TickMath.minUsableTick(60), TickMath.maxUsableTick(60), 1000 ether)
         );
 
         // Approve for swapping
