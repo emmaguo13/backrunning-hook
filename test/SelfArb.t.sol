@@ -286,7 +286,7 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
     //  (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
     // console.logUint(sqrtPriceX96);
 
-    //     params = IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 7 ether, sqrtPriceLimitX96: SQRT_RATIO_4_1});
+    //     params = IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 31 ether, sqrtPriceLimitX96: SQRT_RATIO_4_1});
     // swapRouter.swap(poolKey0, params, testSettings);
 
     //  (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
