@@ -67,12 +67,10 @@ contract SelfArb is BaseHook {
             //Flash swap token1 for token0 (pool0Id)
             IPoolManager.SwapParams memory token1to0 = IPoolManager.SwapParams({
                 zeroForOne: false, 
-                amountSpecified: 1 ether,
+                amountSpecified: 0.5 ether,
                 sqrtPriceLimitX96: SQRT_RATIO_4_1
             });
             BalanceDelta delta0 = poolManager.swap(pool0Key, token1to0);
-            console.logInt(delta0.amount0());
-            console.logInt(delta0.amount1());
 
             //Swap token0 for token2 (pool2Id)
             IPoolManager.SwapParams memory token0to2 = IPoolManager.SwapParams({
@@ -81,8 +79,6 @@ contract SelfArb is BaseHook {
                 sqrtPriceLimitX96: SQRT_RATIO_4_1
             });
             BalanceDelta delta2 = poolManager.swap(pool2Key, token0to2);
-            console.logInt(delta2.amount0());
-            console.logInt(delta2.amount1());
 
             //Swap token2 for token1 (pool1Id)
             IPoolManager.SwapParams memory token2to1 = IPoolManager.SwapParams({
@@ -91,8 +87,6 @@ contract SelfArb is BaseHook {
                 sqrtPriceLimitX96: SQRT_RATIO_4_1
             });
             BalanceDelta delta1 = poolManager.swap(pool1Key, token2to1);
-            console.logInt(delta1.amount0());
-            console.logInt(delta1.amount1());
 
             //Repay loan on token 1
 
@@ -102,7 +96,7 @@ contract SelfArb is BaseHook {
             //     );
             //     poolManager.settle(pool1Key.currency1);
             // } 
-
+            
             // TODO: figure out how to prevent reverts
             require(-delta1.amount0() >= delta0.amount1());
 

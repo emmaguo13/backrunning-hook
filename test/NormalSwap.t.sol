@@ -41,9 +41,6 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
     TestERC20 token1;
     TestERC20 token2;
 
-    SelfArbImplementation selfarb = SelfArbImplementation(
-        address(uint160(Hooks.AFTER_SWAP_FLAG))
-    );
     PoolManager manager;
     PoolModifyPositionTest modifyPositionRouter;
     PoolSwapTest swapRouter; 
@@ -54,27 +51,14 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
     IPoolManager.PoolKey poolKey2;
     PoolId poolId2;
 
-    function setUpSelfArbPool() public {
+    function setUpNormalPools() public {
         token0 = new TestERC20(2**128);
         token1 = new TestERC20(2**128);
         token2 = new TestERC20(2**128);
         manager = new PoolManager(500000);
 
-        // testing environment requires our contract to override `validateHookAddress`
-        // well do that via the Implementation contract to avoid deploying the override with the production contract
-        SelfArbImplementation impl = new SelfArbImplementation(manager, selfarb, address(token0), address(token1), address(token2));
-        (, bytes32[] memory writes) = vm.accesses(address(impl));
-        vm.etch(address(selfarb), address(impl).code);
-        // for each storage key that was written during the hook implementation, copy the value over
-        unchecked {
-            for (uint256 i = 0; i < writes.length; i++) {
-                bytes32 slot = writes[i];
-                vm.store(address(selfarb), slot, vm.load(address(impl), slot));
-            }
-        }
-
         // Create the pools
-        poolKey0 = IPoolManager.PoolKey(Currency.wrap(address(token0)), Currency.wrap(address(token1)), 3000, 60, IHooks(selfarb));
+        poolKey0 = IPoolManager.PoolKey(Currency.wrap(address(token0)), Currency.wrap(address(token1)), 3000, 60, IHooks(address(0)));
         poolId0 = poolKey0.toId();
         manager.initialize(poolKey0, SQRT_RATIO_1_1);
 
@@ -120,9 +104,6 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
         token0.approve(address(swapRouter), 1000 ether);
         token1.approve(address(swapRouter), 1000 ether);
         token2.approve(address(swapRouter), 1000 ether);
-        token0.approve(address(selfarb), 1000 ether);
-        token1.approve(address(selfarb), 1000 ether);
-        token2.approve(address(selfarb), 1000 ether);
         token0.approve(address(manager), 1000 ether);
         token1.approve(address(manager), 1000 ether);
         token2.approve(address(manager), 1000 ether);
@@ -151,7 +132,7 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
         //Add prints for price
     }
 
-    function testSelfArbHooks() public {
+    function testNormalSwap() public {
         // Perform a test swap //
         IPoolManager.SwapParams memory params =
             IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 9 ether, sqrtPriceLimitX96: SQRT_RATIO_1_2});
