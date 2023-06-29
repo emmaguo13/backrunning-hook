@@ -184,18 +184,16 @@ contract SelfArb is BaseHook {
             uint256 token0Hook = IERC20Minimal(Currency.unwrap(key.currency0)).balanceOf(address(this));
             uint256 token1Hook = IERC20Minimal(Currency.unwrap(key.currency1)).balanceOf(address(this));
 
+            console.log("hook amount of token 0 and 1");
+            console.log(token0Hook);
+            console.log(token1Hook);
+
             uint256 poolLiq = poolManager.getLiquidity(key.toId());
 
-            uint256 token0Amount = FullMath.mulDiv(
-                FullMath.mulDiv(uint256(-params.liquidityDelta), FixedPoint128.Q128, poolLiq),
-                token0Hook,
-                FixedPoint128.Q128
-            );
-            uint256 token1Amount = FullMath.mulDiv(
-                FullMath.mulDiv(uint256(-params.liquidityDelta), FixedPoint128.Q128, poolLiq),
-                token1Hook,
-                FixedPoint128.Q128
-            );
+            uint256 token0Amount = FullMath.mulDiv(uint256(-params.liquidityDelta), token0Hook, poolLiq);
+            uint256 token1Amount = FullMath.mulDiv(uint256(-params.liquidityDelta), token1Hook, poolLiq);
+
+            console.log(token1Amount);
 
             require(token0Amount >= 0 && token1Amount >= 0);
 

@@ -13,6 +13,7 @@ import {IPoolManager} from "@uniswap/v4-core/contracts/interfaces/IPoolManager.s
 import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/contracts/libraries/PoolId.sol";
 import {PoolModifyPositionTest} from "@uniswap/v4-core/contracts/test/PoolModifyPositionTest.sol";
 import {PoolSwapTest} from "@uniswap/v4-core/contracts/test/PoolSwapTest.sol";
+import {PoolModifyPositionTest} from "@uniswap/v4-core/contracts/test/PoolModifyPositionTest.sol";
 import {PoolDonateTest} from "@uniswap/v4-core/contracts/test/PoolDonateTest.sol";
 import {Deployers} from "@uniswap/v4-core/test/foundry-tests/utils/Deployers.sol";
 import {CurrencyLibrary, Currency} from "@uniswap/v4-core/contracts/libraries/CurrencyLibrary.sol";
@@ -178,6 +179,25 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
         (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
         console.log("POOL 2 PRICE AFTER:");
         console.logUint(sqrtPriceX96);
+        // ------------------- //
+    }
+
+    function testSelfArbHooks1LiquidityRemoval() public {
+        // Perform a test swap //
+        IPoolManager.SwapParams memory params =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 9 ether, sqrtPriceLimitX96: SQRT_RATIO_1_2});
+
+        PoolSwapTest.TestSettings memory testSettings =
+            PoolSwapTest.TestSettings({withdrawTokens: true, settleUsingTransfer: true});
+
+        (uint160 sqrtPriceX96,,,,,) = manager.getSlot0(poolId0);
+        BalanceDelta delta = swapRouter.swap(poolKey0, params, testSettings);
+
+        uint256 currBalance0 = TestERC20(token0).balanceOf(address(this));
+
+        modifyPositionRouter.modifyPosition(poolKey0, IPoolManager.ModifyPositionParams({tickLower: -120, tickUpper: 120, liquidityDelta: -1000}));
+
+        assertTrue(TestERC20(token0).balanceOf(address(this)) > currBalance0);
         // ------------------- //
     }
 
