@@ -41,12 +41,10 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
     TestERC20 token1;
     TestERC20 token2;
 
-    SelfArbImplementation selfarb = SelfArbImplementation(
-        address(uint160(Hooks.AFTER_SWAP_FLAG))
-    );
+    SelfArbImplementation selfarb = SelfArbImplementation(address(uint160(Hooks.AFTER_SWAP_FLAG | Hooks.AFTER_MODIFY_POSITION_FLAG)));
     PoolManager manager;
     PoolModifyPositionTest modifyPositionRouter;
-    PoolSwapTest swapRouter; 
+    PoolSwapTest swapRouter;
     IPoolManager.PoolKey poolKey0;
     PoolId poolId0;
     IPoolManager.PoolKey poolKey1;
@@ -62,7 +60,8 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
 
         // testing environment requires our contract to override `validateHookAddress`
         // well do that via the Implementation contract to avoid deploying the override with the production contract
-        SelfArbImplementation impl = new SelfArbImplementation(manager, selfarb, address(token0), address(token1), address(token2));
+        SelfArbImplementation impl =
+            new SelfArbImplementation(manager, selfarb, address(token0), address(token1), address(token2));
         (, bytes32[] memory writes) = vm.accesses(address(impl));
         vm.etch(address(selfarb), address(impl).code);
         // for each storage key that was written during the hook implementation, copy the value over
@@ -74,15 +73,20 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
         }
 
         // Create the pools
-        poolKey0 = IPoolManager.PoolKey(Currency.wrap(address(token0)), Currency.wrap(address(token1)), 0, 60, IHooks(selfarb));
+        poolKey0 =
+            IPoolManager.PoolKey(Currency.wrap(address(token0)), Currency.wrap(address(token1)), 0, 60, IHooks(selfarb));
         poolId0 = poolKey0.toId();
         manager.initialize(poolKey0, SQRT_RATIO_1_1);
 
-        poolKey1 = IPoolManager.PoolKey(Currency.wrap(address(token1)), Currency.wrap(address(token2)), 0, 60, IHooks(address(0)));
+        poolKey1 = IPoolManager.PoolKey(
+            Currency.wrap(address(token1)), Currency.wrap(address(token2)), 0, 60, IHooks(address(0))
+        );
         poolId1 = poolKey1.toId();
         manager.initialize(poolKey1, SQRT_RATIO_1_1);
 
-        poolKey2 = IPoolManager.PoolKey(Currency.wrap(address(token2)), Currency.wrap(address(token0)), 0, 60, IHooks(address(0)));
+        poolKey2 = IPoolManager.PoolKey(
+            Currency.wrap(address(token2)), Currency.wrap(address(token0)), 0, 60, IHooks(address(0))
+        );
         poolId2 = poolKey2.toId();
         manager.initialize(poolKey2, SQRT_RATIO_1_1);
 
@@ -93,27 +97,30 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
         // Provide liquidity to the pool
         token0.approve(address(modifyPositionRouter), 100000 ether);
         token1.approve(address(modifyPositionRouter), 100000 ether);
-        token2.approve(address (modifyPositionRouter), 100000 ether);
+        token2.approve(address(modifyPositionRouter), 100000 ether);
         token0.mint(address(this), 100000 ether);
         token1.mint(address(this), 100000 ether);
         token2.mint(address(this), 100000 ether);
-        
+
         modifyPositionRouter.modifyPosition(poolKey0, IPoolManager.ModifyPositionParams(-60, 60, 1000 ether));
         modifyPositionRouter.modifyPosition(poolKey0, IPoolManager.ModifyPositionParams(-120, 120, 1000 ether));
         modifyPositionRouter.modifyPosition(
-            poolKey0, IPoolManager.ModifyPositionParams(TickMath.minUsableTick(60), TickMath.maxUsableTick(60), 1000 ether)
+            poolKey0,
+            IPoolManager.ModifyPositionParams(TickMath.minUsableTick(60), TickMath.maxUsableTick(60), 1000 ether)
         );
 
         modifyPositionRouter.modifyPosition(poolKey1, IPoolManager.ModifyPositionParams(-60, 60, 1000 ether));
         modifyPositionRouter.modifyPosition(poolKey1, IPoolManager.ModifyPositionParams(-120, 120, 1000 ether));
         modifyPositionRouter.modifyPosition(
-            poolKey1, IPoolManager.ModifyPositionParams(TickMath.minUsableTick(60), TickMath.maxUsableTick(60), 1000 ether)
+            poolKey1,
+            IPoolManager.ModifyPositionParams(TickMath.minUsableTick(60), TickMath.maxUsableTick(60), 1000 ether)
         );
 
         modifyPositionRouter.modifyPosition(poolKey2, IPoolManager.ModifyPositionParams(-60, 60, 1000 ether));
         modifyPositionRouter.modifyPosition(poolKey2, IPoolManager.ModifyPositionParams(-120, 120, 1000 ether));
         modifyPositionRouter.modifyPosition(
-            poolKey2, IPoolManager.ModifyPositionParams(TickMath.minUsableTick(60), TickMath.maxUsableTick(60), 1000 ether)
+            poolKey2,
+            IPoolManager.ModifyPositionParams(TickMath.minUsableTick(60), TickMath.maxUsableTick(60), 1000 ether)
         );
 
         // Approve for swapping
@@ -126,7 +133,6 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
         token0.approve(address(manager), 1000 ether);
         token1.approve(address(manager), 1000 ether);
         token2.approve(address(manager), 1000 ether);
-
     }
 
     function testSelfArbHooks1() public {
@@ -137,42 +143,39 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
         PoolSwapTest.TestSettings memory testSettings =
             PoolSwapTest.TestSettings({withdrawTokens: true, settleUsingTransfer: true});
 
-        (uint160 sqrtPriceX96, , , , ,) = manager.getSlot0(poolId0);
+        (uint160 sqrtPriceX96,,,,,) = manager.getSlot0(poolId0);
         console.log("POOL 0 PRICE BEFORE:");
         console.logUint(sqrtPriceX96);
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId1);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId1);
         console.log("POOL 1 PRICE BEFORE:");
         console.logUint(sqrtPriceX96);
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
         console.log("POOL 2 PRICE BEFORE:");
         console.logUint(sqrtPriceX96);
-        
-        BalanceDelta delta = swapRouter.swap(
-            poolKey0,
-            params,
-            testSettings
-        );
+
+        BalanceDelta delta = swapRouter.swap(poolKey0, params, testSettings);
 
         console.log("TOKEN 0 IN:");
         console.logInt(delta.amount0());
         console.log("TOKEN 1 OUT:");
         console.logInt(-delta.amount1());
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId0);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId0);
         console.log("POOL 0 PRICE AFTER:");
         console.logUint(sqrtPriceX96);
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId1);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId1);
         console.log("POOL 1 PRICE AFTER:");
         console.logUint(sqrtPriceX96);
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
         console.log("POOL 2 PRICE AFTER:");
         console.logUint(sqrtPriceX96);
         // ------------------- //
     }
+
     function testSelfArbHooks2() public {
         // Perform a test swap //
         IPoolManager.SwapParams memory params =
@@ -181,38 +184,34 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
         PoolSwapTest.TestSettings memory testSettings =
             PoolSwapTest.TestSettings({withdrawTokens: true, settleUsingTransfer: true});
 
-        (uint160 sqrtPriceX96, , , , ,) = manager.getSlot0(poolId0);
+        (uint160 sqrtPriceX96,,,,,) = manager.getSlot0(poolId0);
         console.log("POOL 0 PRICE BEFORE:");
         console.logUint(sqrtPriceX96);
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId1);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId1);
         console.log("POOL 1 PRICE BEFORE:");
         console.logUint(sqrtPriceX96);
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
         console.log("POOL 2 PRICE BEFORE:");
         console.logUint(sqrtPriceX96);
-        
-        BalanceDelta delta = swapRouter.swap(
-            poolKey0,
-            params,
-            testSettings
-        );
+
+        BalanceDelta delta = swapRouter.swap(poolKey0, params, testSettings);
 
         console.log("TOKEN 1 IN:");
         console.logInt(delta.amount1());
         console.log("TOKEN 0 OUT:");
         console.logInt(-delta.amount0());
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId0);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId0);
         console.log("POOL 0 PRICE AFTER:");
         console.logUint(sqrtPriceX96);
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId1);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId1);
         console.log("POOL 1 PRICE AFTER:");
         console.logUint(sqrtPriceX96);
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
         console.log("POOL 2 PRICE AFTER:");
         console.logUint(sqrtPriceX96);
         // ------------------- //
@@ -222,7 +221,6 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
     // // Random Swaps
     // (uint160 sqrtPriceX96, , , , ,) = manager.getSlot0(poolId0);
     // console.logUint(sqrtPriceX96);
-
 
     // IPoolManager.SwapParams memory params =
     //     IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 9 ether, sqrtPriceLimitX96: SQRT_RATIO_1_4});
@@ -255,7 +253,7 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
 
     //  (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
     // console.logUint(sqrtPriceX96);
-    
+
     // params = IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 1 ether, sqrtPriceLimitX96: SQRT_RATIO_1_4});
     // swapRouter.swap(poolKey2, params, testSettings);
 

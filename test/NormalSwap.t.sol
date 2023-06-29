@@ -43,7 +43,7 @@ contract NormalSwapTest is Test, Deployers, GasSnapshot {
 
     PoolManager manager;
     PoolModifyPositionTest modifyPositionRouter;
-    PoolSwapTest swapRouter; 
+    PoolSwapTest swapRouter;
     IPoolManager.PoolKey poolKey0;
     PoolId poolId0;
     IPoolManager.PoolKey poolKey1;
@@ -58,15 +58,21 @@ contract NormalSwapTest is Test, Deployers, GasSnapshot {
         manager = new PoolManager(500000);
 
         // Create the pools
-        poolKey0 = IPoolManager.PoolKey(Currency.wrap(address(token0)), Currency.wrap(address(token1)), 0, 60, IHooks(address(0)));
+        poolKey0 = IPoolManager.PoolKey(
+            Currency.wrap(address(token0)), Currency.wrap(address(token1)), 0, 60, IHooks(address(0))
+        );
         poolId0 = poolKey0.toId();
         manager.initialize(poolKey0, SQRT_RATIO_1_1);
 
-        poolKey1 = IPoolManager.PoolKey(Currency.wrap(address(token1)), Currency.wrap(address(token2)), 0, 60, IHooks(address(0)));
+        poolKey1 = IPoolManager.PoolKey(
+            Currency.wrap(address(token1)), Currency.wrap(address(token2)), 0, 60, IHooks(address(0))
+        );
         poolId1 = poolKey1.toId();
         manager.initialize(poolKey1, SQRT_RATIO_1_1);
 
-        poolKey2 = IPoolManager.PoolKey(Currency.wrap(address(token2)), Currency.wrap(address(token0)), 0, 60, IHooks(address(0)));
+        poolKey2 = IPoolManager.PoolKey(
+            Currency.wrap(address(token2)), Currency.wrap(address(token0)), 0, 60, IHooks(address(0))
+        );
         poolId2 = poolKey2.toId();
         manager.initialize(poolKey2, SQRT_RATIO_1_1);
 
@@ -77,27 +83,30 @@ contract NormalSwapTest is Test, Deployers, GasSnapshot {
         // Provide liquidity to the pool
         token0.approve(address(modifyPositionRouter), 100000 ether);
         token1.approve(address(modifyPositionRouter), 100000 ether);
-        token2.approve(address (modifyPositionRouter), 100000 ether);
+        token2.approve(address(modifyPositionRouter), 100000 ether);
         token0.mint(address(this), 100000 ether);
         token1.mint(address(this), 100000 ether);
         token2.mint(address(this), 100000 ether);
-        
+
         modifyPositionRouter.modifyPosition(poolKey0, IPoolManager.ModifyPositionParams(-60, 60, 1000 ether));
         modifyPositionRouter.modifyPosition(poolKey0, IPoolManager.ModifyPositionParams(-120, 120, 1000 ether));
         modifyPositionRouter.modifyPosition(
-            poolKey0, IPoolManager.ModifyPositionParams(TickMath.minUsableTick(60), TickMath.maxUsableTick(60), 1000 ether)
+            poolKey0,
+            IPoolManager.ModifyPositionParams(TickMath.minUsableTick(60), TickMath.maxUsableTick(60), 1000 ether)
         );
 
         modifyPositionRouter.modifyPosition(poolKey1, IPoolManager.ModifyPositionParams(-60, 60, 1000 ether));
         modifyPositionRouter.modifyPosition(poolKey1, IPoolManager.ModifyPositionParams(-120, 120, 1000 ether));
         modifyPositionRouter.modifyPosition(
-            poolKey1, IPoolManager.ModifyPositionParams(TickMath.minUsableTick(60), TickMath.maxUsableTick(60), 1000 ether)
+            poolKey1,
+            IPoolManager.ModifyPositionParams(TickMath.minUsableTick(60), TickMath.maxUsableTick(60), 1000 ether)
         );
 
         modifyPositionRouter.modifyPosition(poolKey2, IPoolManager.ModifyPositionParams(-60, 60, 1000 ether));
         modifyPositionRouter.modifyPosition(poolKey2, IPoolManager.ModifyPositionParams(-120, 120, 1000 ether));
         modifyPositionRouter.modifyPosition(
-            poolKey2, IPoolManager.ModifyPositionParams(TickMath.minUsableTick(60), TickMath.maxUsableTick(60), 1000 ether)
+            poolKey2,
+            IPoolManager.ModifyPositionParams(TickMath.minUsableTick(60), TickMath.maxUsableTick(60), 1000 ether)
         );
 
         // Approve for swapping
@@ -125,7 +134,7 @@ contract NormalSwapTest is Test, Deployers, GasSnapshot {
 
         // params = IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 30, sqrtPriceLimitX96: SQRT_RATIO_1_2});
         // swapRouter.swap(poolKey1, params, testSettings);
-        
+
         // params = IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 1, sqrtPriceLimitX96: SQRT_RATIO_1_2});
         // swapRouter.swap(poolKey2, params, testSettings);
 
@@ -140,38 +149,34 @@ contract NormalSwapTest is Test, Deployers, GasSnapshot {
         PoolSwapTest.TestSettings memory testSettings =
             PoolSwapTest.TestSettings({withdrawTokens: true, settleUsingTransfer: true});
 
-        (uint160 sqrtPriceX96, , , , ,) = manager.getSlot0(poolId0);
+        (uint160 sqrtPriceX96,,,,,) = manager.getSlot0(poolId0);
         console.log("POOL 0 PRICE BEFORE:");
         console.logUint(sqrtPriceX96);
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId1);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId1);
         console.log("POOL 1 PRICE BEFORE:");
         console.logUint(sqrtPriceX96);
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
         console.log("POOL 2 PRICE BEFORE:");
         console.logUint(sqrtPriceX96);
-        
-        BalanceDelta delta = swapRouter.swap(
-            poolKey0,
-            params,
-            testSettings
-        );
+
+        BalanceDelta delta = swapRouter.swap(poolKey0, params, testSettings);
 
         console.log("TOKEN 0 IN:");
         console.logInt(delta.amount0());
         console.log("TOKEN 1 OUT:");
         console.logInt(-delta.amount1());
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId0);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId0);
         console.log("POOL 1 PRICE BEFORE:");
         console.logUint(sqrtPriceX96);
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId1);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId1);
         console.log("POOL 2 PRICE BEFORE:");
         console.logUint(sqrtPriceX96);
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
         console.log("POOL 3 PRICE BEFORE:");
         console.logUint(sqrtPriceX96);
         // ------------------- //
@@ -185,139 +190,149 @@ contract NormalSwapTest is Test, Deployers, GasSnapshot {
         PoolSwapTest.TestSettings memory testSettings =
             PoolSwapTest.TestSettings({withdrawTokens: true, settleUsingTransfer: true});
 
-        (uint160 sqrtPriceX96, , , , ,) = manager.getSlot0(poolId0);
+        (uint160 sqrtPriceX96,,,,,) = manager.getSlot0(poolId0);
         console.log("POOL 0 PRICE BEFORE:");
         console.logUint(sqrtPriceX96);
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId1);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId1);
         console.log("POOL 1 PRICE BEFORE:");
         console.logUint(sqrtPriceX96);
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
         console.log("POOL 2 PRICE BEFORE:");
         console.logUint(sqrtPriceX96);
-        
-        BalanceDelta delta = swapRouter.swap(
-            poolKey0,
-            params,
-            testSettings
-        );
+
+        BalanceDelta delta = swapRouter.swap(poolKey0, params, testSettings);
 
         console.log("TOKEN 1 IN:");
         console.logInt(delta.amount1());
         console.log("TOKEN 0 OUT:");
         console.logInt(-delta.amount0());
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId0);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId0);
         console.log("POOL 0 PRICE AFTER:");
         console.logUint(sqrtPriceX96);
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId1);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId1);
         console.log("POOL 1 PRICE AFTER:");
         console.logUint(sqrtPriceX96);
 
-        (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
         console.log("POOL 2 PRICE AFTER:");
         console.logUint(sqrtPriceX96);
         // ------------------- //
     }
 
     function testNormalSwap3() public {
-    // Random Swaps
-    (uint160 sqrtPriceX96, , , , ,) = manager.getSlot0(poolId0);
-    console.logUint(sqrtPriceX96);
+        // Random Swaps
+        (uint160 sqrtPriceX96,,,,,) = manager.getSlot0(poolId0);
+        console.logUint(sqrtPriceX96);
 
+        IPoolManager.SwapParams memory params =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 9 ether, sqrtPriceLimitX96: SQRT_RATIO_1_4});
+        PoolSwapTest.TestSettings memory testSettings =
+            PoolSwapTest.TestSettings({withdrawTokens: true, settleUsingTransfer: true});
+        swapRouter.swap(poolKey0, params, testSettings);
 
-    IPoolManager.SwapParams memory params =
-        IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 9 ether, sqrtPriceLimitX96: SQRT_RATIO_1_4});
-    PoolSwapTest.TestSettings memory testSettings = PoolSwapTest.TestSettings({withdrawTokens: true, settleUsingTransfer: true});
-    swapRouter.swap(poolKey0, params, testSettings);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
+        console.logUint(sqrtPriceX96);
 
-    (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
-    console.logUint(sqrtPriceX96);
+        params =
+            IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 5 ether, sqrtPriceLimitX96: SQRT_RATIO_4_1});
+        swapRouter.swap(poolKey1, params, testSettings);
 
-    params = IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 5 ether, sqrtPriceLimitX96: SQRT_RATIO_4_1});
-    swapRouter.swap(poolKey1, params, testSettings);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
+        console.logUint(sqrtPriceX96);
 
-     (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
-    console.logUint(sqrtPriceX96);
+        params =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 8 ether, sqrtPriceLimitX96: SQRT_RATIO_1_4});
+        swapRouter.swap(poolKey2, params, testSettings);
 
-    params = IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 8 ether, sqrtPriceLimitX96: SQRT_RATIO_1_4});
-    swapRouter.swap(poolKey2, params, testSettings);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
+        console.logUint(sqrtPriceX96);
 
-     (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
-    console.logUint(sqrtPriceX96);
+        params =
+            IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 20 ether, sqrtPriceLimitX96: SQRT_RATIO_4_1});
+        swapRouter.swap(poolKey2, params, testSettings);
 
-    params = IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 20 ether, sqrtPriceLimitX96: SQRT_RATIO_4_1});
-    swapRouter.swap(poolKey2, params, testSettings);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
+        console.logUint(sqrtPriceX96);
 
-     (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
-    console.logUint(sqrtPriceX96);
+        params =
+            IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 30 ether, sqrtPriceLimitX96: SQRT_RATIO_4_1});
+        swapRouter.swap(poolKey1, params, testSettings);
 
-    params = IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 30 ether, sqrtPriceLimitX96: SQRT_RATIO_4_1});
-    swapRouter.swap(poolKey1, params, testSettings);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
+        console.logUint(sqrtPriceX96);
 
-     (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
-    console.logUint(sqrtPriceX96);
-    
-    params = IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 1 ether, sqrtPriceLimitX96: SQRT_RATIO_1_4});
-    swapRouter.swap(poolKey2, params, testSettings);
+        params =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 1 ether, sqrtPriceLimitX96: SQRT_RATIO_1_4});
+        swapRouter.swap(poolKey2, params, testSettings);
 
-     (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
-    console.logUint(sqrtPriceX96);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
+        console.logUint(sqrtPriceX96);
 
-        params = IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 15 ether, sqrtPriceLimitX96: SQRT_RATIO_4_1});
-    swapRouter.swap(poolKey2, params, testSettings);
+        params =
+            IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 15 ether, sqrtPriceLimitX96: SQRT_RATIO_4_1});
+        swapRouter.swap(poolKey2, params, testSettings);
 
-     (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
-    console.logUint(sqrtPriceX96);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
+        console.logUint(sqrtPriceX96);
 
-        params = IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 8 ether, sqrtPriceLimitX96: SQRT_RATIO_1_4});
-    swapRouter.swap(poolKey1, params, testSettings);
+        params =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 8 ether, sqrtPriceLimitX96: SQRT_RATIO_1_4});
+        swapRouter.swap(poolKey1, params, testSettings);
 
-     (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
-    console.logUint(sqrtPriceX96);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
+        console.logUint(sqrtPriceX96);
 
-        params = IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 3 ether, sqrtPriceLimitX96: SQRT_RATIO_4_1});
-    swapRouter.swap(poolKey2, params, testSettings);
+        params =
+            IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 3 ether, sqrtPriceLimitX96: SQRT_RATIO_4_1});
+        swapRouter.swap(poolKey2, params, testSettings);
 
-     (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
-    console.logUint(sqrtPriceX96);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
+        console.logUint(sqrtPriceX96);
 
-        params = IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 10 ether, sqrtPriceLimitX96: SQRT_RATIO_1_4});
-    swapRouter.swap(poolKey0, params, testSettings);
+        params =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 10 ether, sqrtPriceLimitX96: SQRT_RATIO_1_4});
+        swapRouter.swap(poolKey0, params, testSettings);
 
-     (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
-    console.logUint(sqrtPriceX96);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
+        console.logUint(sqrtPriceX96);
 
-        params = IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 31 ether, sqrtPriceLimitX96: SQRT_RATIO_4_1});
-    swapRouter.swap(poolKey0, params, testSettings);
+        params =
+            IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 31 ether, sqrtPriceLimitX96: SQRT_RATIO_4_1});
+        swapRouter.swap(poolKey0, params, testSettings);
 
-     (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
-    console.logUint(sqrtPriceX96);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
+        console.logUint(sqrtPriceX96);
 
-        params = IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 16 ether, sqrtPriceLimitX96: SQRT_RATIO_1_4});
-    swapRouter.swap(poolKey1, params, testSettings);
+        params =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 16 ether, sqrtPriceLimitX96: SQRT_RATIO_1_4});
+        swapRouter.swap(poolKey1, params, testSettings);
 
-     (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
-    console.logUint(sqrtPriceX96);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
+        console.logUint(sqrtPriceX96);
 
-        params = IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 25 ether, sqrtPriceLimitX96: SQRT_RATIO_1_4});
-    swapRouter.swap(poolKey2, params, testSettings);
+        params =
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 25 ether, sqrtPriceLimitX96: SQRT_RATIO_1_4});
+        swapRouter.swap(poolKey2, params, testSettings);
 
-     (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
-    console.logUint(sqrtPriceX96);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
+        console.logUint(sqrtPriceX96);
 
-        params = IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 13 ether, sqrtPriceLimitX96: SQRT_RATIO_4_1});
-    swapRouter.swap(poolKey0, params, testSettings);
+        params =
+            IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 13 ether, sqrtPriceLimitX96: SQRT_RATIO_4_1});
+        swapRouter.swap(poolKey0, params, testSettings);
 
-     (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
-    console.logUint(sqrtPriceX96);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
+        console.logUint(sqrtPriceX96);
 
-        params = IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 3 ether, sqrtPriceLimitX96: SQRT_RATIO_4_1});
-    swapRouter.swap(poolKey1, params, testSettings);
+        params =
+            IPoolManager.SwapParams({zeroForOne: false, amountSpecified: 3 ether, sqrtPriceLimitX96: SQRT_RATIO_4_1});
+        swapRouter.swap(poolKey1, params, testSettings);
 
-     (sqrtPriceX96, , , , ,) = manager.getSlot0(poolId2);
-    console.logUint(sqrtPriceX96);
+        (sqrtPriceX96,,,,,) = manager.getSlot0(poolId2);
+        console.logUint(sqrtPriceX96);
     }
 }

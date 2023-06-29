@@ -12,10 +12,12 @@ import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/contracts/libraries/PoolId
 import {IERC20Minimal} from "@uniswap/v4-core/contracts/interfaces/external/IERC20Minimal.sol";
 import {Deployers} from "@uniswap/v4-core/test/foundry-tests/utils/Deployers.sol";
 
+import {FullMath} from "@uniswap/v4-core/contracts/libraries/FullMath.sol";
+import "@uniswap/v4-core/contracts/libraries/FixedPoint128.sol";
+
 import "forge-std/console.sol";
 
 contract SelfArb is BaseHook {
-
     using PoolIdLibrary for IPoolManager.PoolKey;
 
     address public immutable token0;
@@ -38,31 +40,29 @@ contract SelfArb is BaseHook {
         address sender;
         IPoolManager.SwapParams params;
     }
-    
+
     struct TestSettings {
         bool withdrawTokens;
         bool settleUsingTransfer;
     }
 
-    function _backRun(
-        IPoolManager.SwapParams memory params
-    ) internal returns (BalanceDelta delta) {
-
-        delta =
-            abi.decode(poolManager.lock(abi.encode(CallbackData(address(this), params))), (BalanceDelta));
+    function _backRun(IPoolManager.SwapParams memory params) internal returns (BalanceDelta delta) {
+        delta = abi.decode(poolManager.lock(abi.encode(CallbackData(address(this), params))), (BalanceDelta));
     }
 
     function lockAcquired(uint256, bytes calldata rawData) external override returns (bytes memory) {
         require(msg.sender == address(poolManager));
 
-        
-        IPoolManager.PoolKey memory pool0Key = IPoolManager.PoolKey(Currency.wrap(token0), Currency.wrap(token1), 0, 60, IHooks(address(this)));
-        IPoolManager.PoolKey memory pool1Key = IPoolManager.PoolKey(Currency.wrap(token1), Currency.wrap(token2), 0, 60, IHooks(address(0)));
-        IPoolManager.PoolKey memory pool2Key = IPoolManager.PoolKey(Currency.wrap(token2), Currency.wrap(token0), 0, 60, IHooks(address(0)));
+        IPoolManager.PoolKey memory pool0Key =
+            IPoolManager.PoolKey(Currency.wrap(token0), Currency.wrap(token1), 0, 60, IHooks(address(this)));
+        IPoolManager.PoolKey memory pool1Key =
+            IPoolManager.PoolKey(Currency.wrap(token1), Currency.wrap(token2), 0, 60, IHooks(address(0)));
+        IPoolManager.PoolKey memory pool2Key =
+            IPoolManager.PoolKey(Currency.wrap(token2), Currency.wrap(token0), 0, 60, IHooks(address(0)));
 
-        (uint160 pool0Price, , , , ,) = poolManager.getSlot0(pool0Key.toId());
-        (uint160 pool1Price, , , , ,) = poolManager.getSlot0(pool1Key.toId());
-        (uint160 pool2Price, , , , ,) = poolManager.getSlot0(pool2Key.toId());
+        (uint160 pool0Price,,,,,) = poolManager.getSlot0(pool0Key.toId());
+        (uint160 pool1Price,,,,,) = poolManager.getSlot0(pool1Key.toId());
+        (uint160 pool2Price,,,,,) = poolManager.getSlot0(pool2Key.toId());
 
         // why are we giving address this the permission?
         IERC20Minimal(Currency.unwrap(pool0Key.currency0)).approve(address(this), type(uint256).max);
@@ -74,7 +74,7 @@ contract SelfArb is BaseHook {
         if (data.params.zeroForOne) {
             //Flash swap token1 for token0 (pool0Id)
             IPoolManager.SwapParams memory token1to0 = IPoolManager.SwapParams({
-                zeroForOne: false, 
+                zeroForOne: false,
                 amountSpecified: data.params.amountSpecified / 2,
                 sqrtPriceLimitX96: SQRT_RATIO_1_1
             });
@@ -84,7 +84,7 @@ contract SelfArb is BaseHook {
 
             //Swap token0 for token2 (pool2Id)
             IPoolManager.SwapParams memory token0to2 = IPoolManager.SwapParams({
-                zeroForOne: false, 
+                zeroForOne: false,
                 amountSpecified: -delta0.amount0(),
                 sqrtPriceLimitX96: SQRT_RATIO_4_1
             });
@@ -93,7 +93,7 @@ contract SelfArb is BaseHook {
 
             //Swap token2 for token1 (pool1Id)
             IPoolManager.SwapParams memory token2to1 = IPoolManager.SwapParams({
-                zeroForOne: false, 
+                zeroForOne: false,
                 amountSpecified: -delta2.amount0(),
                 sqrtPriceLimitX96: SQRT_RATIO_4_1
             });
@@ -107,8 +107,8 @@ contract SelfArb is BaseHook {
             //         data.sender, address(poolManager), uint128(delta1.amount1())
             //     );
             //     poolManager.settle(pool1Key.currency1);
-            // } 
-            
+            // }
+
             // TODO: figure out how to prevent reverts
             require(-delta1.amount0() >= delta0.amount1(), "Loan not repaid");
 
@@ -120,25 +120,24 @@ contract SelfArb is BaseHook {
             }
 
             return abi.encode(delta1);
-        }
-        else{
+        } else {
             //Flash swap token0 for token1 (pool0Id)
             IPoolManager.SwapParams memory token0to1 = IPoolManager.SwapParams({
-                zeroForOne: true, 
+                zeroForOne: true,
                 amountSpecified: data.params.amountSpecified / 2,
                 sqrtPriceLimitX96: SQRT_RATIO_1_1
             });
             BalanceDelta delta0 = poolManager.swap(pool0Key, token0to1);
             //Swap token1 for token2 (pool1Id)
             IPoolManager.SwapParams memory token1to2 = IPoolManager.SwapParams({
-                zeroForOne: true, 
+                zeroForOne: true,
                 amountSpecified: -delta0.amount1(),
                 sqrtPriceLimitX96: SQRT_RATIO_1_4
             });
             BalanceDelta delta1 = poolManager.swap(pool1Key, token1to2);
             //Swap token2 for token0 (pool2Id)
             IPoolManager.SwapParams memory token2to0 = IPoolManager.SwapParams({
-                zeroForOne: true, 
+                zeroForOne: true,
                 amountSpecified: -delta1.amount1(),
                 sqrtPriceLimitX96: SQRT_RATIO_1_4
             });
@@ -170,7 +169,7 @@ contract SelfArb is BaseHook {
             beforeInitialize: false,
             afterInitialize: false,
             beforeModifyPosition: false,
-            afterModifyPosition: false,
+            afterModifyPosition: true,
             beforeSwap: false,
             afterSwap: true,
             beforeDonate: false,
@@ -178,16 +177,52 @@ contract SelfArb is BaseHook {
         });
     }
 
-    function afterSwap(address sender, IPoolManager.PoolKey calldata, IPoolManager.SwapParams calldata params, BalanceDelta)
-        external
-        override
-        returns (bytes4)
-    {
+    function afterModifyPosition(
+        address sender,
+        IPoolManager.PoolKey calldata key,
+        IPoolManager.ModifyPositionParams calldata params,
+        BalanceDelta
+    ) external virtual override returns (bytes4) {
+        if (params.liquidityDelta < 0) {
+            uint256 token0Hook = IERC20Minimal(Currency.unwrap(key.currency0)).balanceOf(address(this));
+            uint256 token1Hook = IERC20Minimal(Currency.unwrap(key.currency1)).balanceOf(address(this));
 
-        if (sender != address(this))  {
+            uint256 poolLiq = poolManager.getLiquidity(key.toId());
+
+            uint256 token0Amount = FullMath.mulDiv(
+                FullMath.mulDiv(uint256(-params.liquidityDelta), FixedPoint128.Q128, poolLiq),
+                token0Hook,
+                FixedPoint128.Q128
+            );
+            uint256 token1Amount = FullMath.mulDiv(
+                FullMath.mulDiv(uint256(-params.liquidityDelta), FixedPoint128.Q128, poolLiq),
+                token1Hook,
+                FixedPoint128.Q128
+            );
+
+            require(token0Amount >= 0 && token1Amount >= 0);
+
+            if (token0Amount > 0) {
+                IERC20Minimal(Currency.unwrap(key.currency0)).transferFrom(address(this), sender, uint128(token0));
+            }
+            if (token1Amount > 0) {
+                IERC20Minimal(Currency.unwrap(key.currency1)).transferFrom(address(this), sender, uint128(token1));
+            }
+        }
+
+        return BaseHook.afterModifyPosition.selector;
+    }
+
+    function afterSwap(
+        address sender,
+        IPoolManager.PoolKey calldata,
+        IPoolManager.SwapParams calldata params,
+        BalanceDelta
+    ) external override returns (bytes4) {
+        if (sender != address(this)) {
             _backRun(params);
         }
-        
+
         return BaseHook.afterSwap.selector;
     }
 }
