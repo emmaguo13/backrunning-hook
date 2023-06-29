@@ -29,7 +29,7 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
     TestERC20 token1;
     TestERC20 token2;
 
-    SelfArb selfarb = SelfArb(
+    SelfArbImplementation selfarb = SelfArbImplementation(
         address(uint160(Hooks.AFTER_SWAP_FLAG))
     );
     PoolManager manager;
@@ -105,9 +105,15 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
         );
 
         // Approve for swapping
-        token0.approve(address(swapRouter), 100 ether);
-        token1.approve(address(swapRouter), 100 ether);
-        token2.approve(address(swapRouter), 100 ether);
+        token0.approve(address(swapRouter), 1000 ether);
+        token1.approve(address(swapRouter), 1000 ether);
+        token2.approve(address(swapRouter), 1000 ether);
+        token0.approve(address(selfarb), 1000 ether);
+        token1.approve(address(selfarb), 1000 ether);
+        token2.approve(address(selfarb), 1000 ether);
+        token0.approve(address(manager), 1000 ether);
+        token1.approve(address(manager), 1000 ether);
+        token2.approve(address(manager), 1000 ether);
 
         // Random Swaps
         // IPoolManager.SwapParams memory params =
@@ -131,14 +137,12 @@ contract SelfArbTest is Test, Deployers, GasSnapshot {
         // swapRouter.swap(poolKey2, params, testSettings);
 
         //Add prints for price
-
-        console.log();
     }
 
     function testSelfArbHooks() public {
         // Perform a test swap //
         IPoolManager.SwapParams memory params =
-            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 100, sqrtPriceLimitX96: SQRT_RATIO_1_2});
+            IPoolManager.SwapParams({zeroForOne: true, amountSpecified: 5 ether, sqrtPriceLimitX96: SQRT_RATIO_1_2});
 
         PoolSwapTest.TestSettings memory testSettings =
             PoolSwapTest.TestSettings({withdrawTokens: true, settleUsingTransfer: true});

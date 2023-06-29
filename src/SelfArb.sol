@@ -10,14 +10,19 @@ import {BalanceDelta} from "@uniswap/v4-core/contracts/types/BalanceDelta.sol";
 import {Currency, CurrencyLibrary} from "@uniswap/v4-core/contracts/libraries/CurrencyLibrary.sol";
 import {PoolId, PoolIdLibrary} from "@uniswap/v4-core/contracts/libraries/PoolId.sol";
 import {IERC20Minimal} from "@uniswap/v4-core/contracts/interfaces/external/IERC20Minimal.sol";
+import {Deployers} from "@uniswap/v4-core/test/foundry-tests/utils/Deployers.sol";
+
+import "forge-std/console.sol";
 
 contract SelfArb is BaseHook {
 
     using PoolIdLibrary for IPoolManager.PoolKey;
 
-    address token0;
-    address token1;
-    address token2;
+    address public immutable token0;
+    address public immutable token1;
+    address public immutable token2;
+
+    uint160 constant SQRT_RATIO_4_1 = 158456325028528675187087900672;
 
     constructor(IPoolManager _poolManager, address _token0, address _token1, address _token2) BaseHook(_poolManager) {
         token0 = _token0;
@@ -27,9 +32,7 @@ contract SelfArb is BaseHook {
 
     struct CallbackData {
         address sender;
-        IPoolManager.PoolKey key;
         IPoolManager.SwapParams params;
-        TestSettings testSettings;
     }
     
     struct TestSettings {
@@ -37,131 +40,123 @@ contract SelfArb is BaseHook {
         bool settleUsingTransfer;
     }
 
-    function swap(
-        IPoolManager.PoolKey memory key,
-        IPoolManager.SwapParams memory params,
-        TestSettings memory testSettings
-    ) external payable returns (BalanceDelta delta) {
+    function _backRun(
+        IPoolManager.SwapParams memory params
+    ) internal returns (BalanceDelta delta) {
+
         delta =
-            abi.decode(poolManager.lock(abi.encode(CallbackData(msg.sender, key, params, testSettings))), (BalanceDelta));
+            abi.decode(poolManager.lock(abi.encode(CallbackData(address(this), params))), (BalanceDelta));
     }
 
     function lockAcquired(uint256, bytes calldata rawData) external override returns (bytes memory) {
         require(msg.sender == address(poolManager));
 
-        PoolId pool0Id = IPoolManager.PoolKey(Currency.wrap(token0), Currency.wrap(token1), 3000, 60, IHooks(address(this))).toId();
-        PoolId pool1Id = IPoolManager.PoolKey(Currency.wrap(token1), Currency.wrap(token2), 3000, 60, IHooks(address(0))).toId();
-        PoolId pool2Id = IPoolManager.PoolKey(Currency.wrap(token2), Currency.wrap(token0), 3000, 60, IHooks(address(0))).toId();
+        
+        IPoolManager.PoolKey memory pool0Key = IPoolManager.PoolKey(Currency.wrap(token0), Currency.wrap(token1), 3000, 60, IHooks(address(this)));
+        IPoolManager.PoolKey memory pool1Key = IPoolManager.PoolKey(Currency.wrap(token1), Currency.wrap(token2), 3000, 60, IHooks(address(0)));
+        IPoolManager.PoolKey memory pool2Key = IPoolManager.PoolKey(Currency.wrap(token2), Currency.wrap(token0), 3000, 60, IHooks(address(0)));
+
+        // why are we giving address this the permission?
+        IERC20Minimal(Currency.unwrap(pool0Key.currency0)).approve(address(this), type(uint256).max);
+        IERC20Minimal(Currency.unwrap(pool1Key.currency0)).approve(address(this), type(uint256).max);
+        IERC20Minimal(Currency.unwrap(pool2Key.currency0)).approve(address(this), type(uint256).max);
 
         CallbackData memory data = abi.decode(rawData, (CallbackData));
 
         if (data.params.zeroForOne) {
             //Flash swap token1 for token0 (pool0Id)
-            IPoolManager.SwapParams token1to0 = IPoolManager.SwapParams({
+            IPoolManager.SwapParams memory token1to0 = IPoolManager.SwapParams({
                 zeroForOne: false, 
-                amountSpecified: 5,
-                sqrtPriceLimitX96: 0
+                amountSpecified: 1 ether,
+                sqrtPriceLimitX96: SQRT_RATIO_4_1
             });
-            BalanceDelta delta0 = poolManager.swap(pool0Id, token1to0);
+            BalanceDelta delta0 = poolManager.swap(pool0Key, token1to0);
+            console.logInt(delta0.amount0());
+            console.logInt(delta0.amount1());
 
             //Swap token0 for token2 (pool2Id)
-            IPoolManager.SwapParams token0to2 = IPoolManager.SwapParams({
+            IPoolManager.SwapParams memory token0to2 = IPoolManager.SwapParams({
                 zeroForOne: false, 
-                amountSpecified: delta0.amount0,
-                sqrtPriceLimitX96: 0
+                amountSpecified: -delta0.amount0(),
+                sqrtPriceLimitX96: SQRT_RATIO_4_1
             });
-            BalanceDelta delta2 = poolManager.swap(pool1Id, token0to2);
+            BalanceDelta delta2 = poolManager.swap(pool2Key, token0to2);
+            console.logInt(delta2.amount0());
+            console.logInt(delta2.amount1());
 
             //Swap token2 for token1 (pool1Id)
-            IPoolManager.SwapParams token2to1 = IPoolManager.SwapParams({
+            IPoolManager.SwapParams memory token2to1 = IPoolManager.SwapParams({
                 zeroForOne: false, 
-                amountSpecified: delta0.amount0,
-                sqrtPriceLimitX96: 0
+                amountSpecified: -delta2.amount0(),
+                sqrtPriceLimitX96: SQRT_RATIO_4_1
             });
-            BalanceDelta delta1 = poolManager.swap(pool2Id, token2to1);
+            BalanceDelta delta1 = poolManager.swap(pool1Key, token2to1);
+            console.logInt(delta1.amount0());
+            console.logInt(delta1.amount1());
 
             //Repay loan on token 1
+
+            // if (delta1.amount1() > 0) {
+            //     IERC20Minimal(Currency.unwrap(pool1Key.currency1)).transferFrom(
+            //         data.sender, address(poolManager), uint128(delta1.amount1())
+            //     );
+            //     poolManager.settle(pool1Key.currency1);
+            // } 
+
+            // TODO: figure out how to prevent reverts
+            require(-delta1.amount0() >= delta0.amount1());
+
+            console.log("PROFIT:");
+            console.logInt(-delta1.amount0() - delta0.amount1());
+
+            if (delta1.amount0() < 0) {
+                poolManager.take(pool1Key.currency0, data.sender, uint128(-delta1.amount0() - delta0.amount1()));
+            }
+
+            return abi.encode(delta1);
         }
         else{
-            //Flash swap token0 for token1 (pool1Id)
-            IPoolManager.SwapParams token0to1 = IPoolManager.SwapParams({
+            //Flash swap token0 for token1 (pool0Id)
+            IPoolManager.SwapParams memory token0to1 = IPoolManager.SwapParams({
                 zeroForOne: true, 
                 amountSpecified: 5,
-                sqrtPriceLimitX96: 0
+                sqrtPriceLimitX96: SQRT_RATIO_4_1
             });
-            BalanceDelta delta1 = poolManager.swap(pool0Id, token0to1);
-            //Swap token1 for token2 (pool2Id)
-            IPoolManager.SwapParams token1to2 = IPoolManager.SwapParams({
+            BalanceDelta delta0 = poolManager.swap(pool0Key, token0to1);
+            //Swap token1 for token2 (pool1Id)
+            IPoolManager.SwapParams memory token1to2 = IPoolManager.SwapParams({
                 zeroForOne: true, 
-                amountSpecified: delta0.amount1,
-                sqrtPriceLimitX96: 0
+                amountSpecified: -delta0.amount1(),
+                sqrtPriceLimitX96: SQRT_RATIO_4_1
             });
-            BalanceDelta delta2 = poolManager.swap(pool1Id, token1to2);
-            //Swap token2 for token0 (pool0Id)
-            IPoolManager.SwapParams token2to0 = IPoolManager.SwapParams({
+            BalanceDelta delta1 = poolManager.swap(pool1Key, token1to2);
+            //Swap token2 for token0 (pool2Id)
+            IPoolManager.SwapParams memory token2to0 = IPoolManager.SwapParams({
                 zeroForOne: true, 
-                amountSpecified: delta2.amount1,
-                sqrtPriceLimitX96: 0
+                amountSpecified: -delta1.amount1(),
+                sqrtPriceLimitX96: SQRT_RATIO_4_1
             });
-            delta1 = poolManager.swap(pool2Id, token2to0);
+            BalanceDelta delta2 = poolManager.swap(pool2Key, token2to0);
 
             //Repay loan on token0
+            // if (delta2.amount0() > 0) {
+            //     IERC20Minimal(Currency.unwrap(pool2Key.currency0)).transferFrom(
+            //         data.sender, address(poolManager), uint128(delta2.amount0())
+            //     );
+            //     poolManager.settle(pool2Key.currency0);
+            // }
+
+            require(-delta2.amount1() >= delta0.amount0());
+
+            console.log("PROFIT:");
+            console.logInt(-delta2.amount1() - delta0.amount0());
+
+            if (delta2.amount1() < 0) {
+                poolManager.take(pool2Key.currency1, data.sender, uint128(-delta2.amount1() - delta0.amount0()));
+            }
+
+            return abi.encode(delta2);
         }
-
-
-        if (data.params.zeroForOne) {
-            if (delta1.amount0() > 0) {
-                if (data.testSettings.settleUsingTransfer) {
-                    IERC20Minimal(Currency.unwrap(data.key.currency0)).transferFrom(
-                        data.sender, address(poolManager), uint128(delta1.amount0())
-                    );
-                    poolManager.settle(data.key.currency0);
-                } else {
-                    // the received hook on this transfer will burn the tokens
-                    poolManager.safeTransferFrom(
-                        data.sender,
-                        address(poolManager),
-                        uint256(uint160(Currency.unwrap(data.key.currency0))),
-                        uint128(delta1.amount0()),
-                        ""
-                    );
-                }
-            }
-            if (delta1.amount1() < 0) {
-                if (data.testSettings.withdrawTokens) {
-                    poolManager.take(data.key.currency1, data.sender, uint128(-delta1.amount1()));
-                } else {
-                    poolManager.mint(data.key.currency1, data.sender, uint128(-delta1.amount1()));
-                }
-            }
-        } else {
-            if (delta1.amount1() > 0) {
-                if (data.testSettings.settleUsingTransfer) {
-                    IERC20Minimal(Currency.unwrap(data.key.currency1)).transferFrom(
-                        data.sender, address(poolManager), uint128(delta1.amount1())
-                    );
-                    poolManager.settle(data.key.currency1);
-                } else {
-                    // the received hook on this transfer will burn the tokens
-                    poolManager.safeTransferFrom(
-                        data.sender,
-                        address(poolManager),
-                        uint256(uint160(Currency.unwrap(data.key.currency1))),
-                        uint128(delta1.amount1()),
-                        ""
-                    );
-                }
-            }
-            if (delta1.amount0() < 0) {
-                if (data.testSettings.withdrawTokens) {
-                    poolManager.take(data.key.currency0, data.sender, uint128(-delta1.amount0()));
-                } else {
-                    poolManager.mint(data.key.currency0, data.sender, uint128(-delta1.amount0()));
-                }
-            }
-        }
-
-        return abi.encode(delta1);
     }
 
     function getHooksCalls() public pure override returns (Hooks.Calls memory) {
@@ -177,17 +172,15 @@ contract SelfArb is BaseHook {
         });
     }
 
-    function afterSwap(address, IPoolManager.PoolKey calldata, IPoolManager.SwapParams calldata params, BalanceDelta)
+    function afterSwap(address sender, IPoolManager.PoolKey calldata, IPoolManager.SwapParams calldata params, BalanceDelta)
         external
         override
         returns (bytes4)
     {
-        //get the pools to check
-        
-        //check for the routes
-        lockAcquired(null, rawData);
 
-        //execute
+        if (sender != address(this))  {
+            _backRun(params);
+        }
         
         return BaseHook.afterSwap.selector;
     }
