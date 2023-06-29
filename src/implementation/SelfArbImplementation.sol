@@ -8,7 +8,7 @@ import {IPoolManager} from "@uniswap/v4-core/contracts/interfaces/IPoolManager.s
 import {Hooks} from "@uniswap/v4-core/contracts/libraries/Hooks.sol";
 
 contract SelfArbImplementation is SelfArb {
-    constructor(IPoolManager poolManager, SelfArb addressToEtch) Counter(poolManager) {
+    constructor(IPoolManager poolManager, SelfArb addressToEtch, address token0, address token1, address token2) SelfArb(poolManager, token0, token1, token2) {
         Hooks.validateHookAddress(addressToEtch, getHooksCalls());
         
     }
