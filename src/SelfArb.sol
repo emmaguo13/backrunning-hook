@@ -53,9 +53,13 @@ contract SelfArb is BaseHook {
         require(msg.sender == address(poolManager));
 
         
-        IPoolManager.PoolKey memory pool0Key = IPoolManager.PoolKey(Currency.wrap(token0), Currency.wrap(token1), 3000, 60, IHooks(address(this)));
-        IPoolManager.PoolKey memory pool1Key = IPoolManager.PoolKey(Currency.wrap(token1), Currency.wrap(token2), 3000, 60, IHooks(address(0)));
-        IPoolManager.PoolKey memory pool2Key = IPoolManager.PoolKey(Currency.wrap(token2), Currency.wrap(token0), 3000, 60, IHooks(address(0)));
+        IPoolManager.PoolKey memory pool0Key = IPoolManager.PoolKey(Currency.wrap(token0), Currency.wrap(token1), 0, 60, IHooks(address(this)));
+        IPoolManager.PoolKey memory pool1Key = IPoolManager.PoolKey(Currency.wrap(token1), Currency.wrap(token2), 0, 60, IHooks(address(0)));
+        IPoolManager.PoolKey memory pool2Key = IPoolManager.PoolKey(Currency.wrap(token2), Currency.wrap(token0), 0, 60, IHooks(address(0)));
+
+        (uint160 pool0Price, , , , ,) = poolManager.getSlot0(pool0Key.toId());
+        (uint160 pool1Price, , , , ,) = poolManager.getSlot0(pool1Key.toId());
+        (uint160 pool2Price, , , , ,) = poolManager.getSlot0(pool2Key.toId());
 
         // why are we giving address this the permission?
         IERC20Minimal(Currency.unwrap(pool0Key.currency0)).approve(address(this), type(uint256).max);
